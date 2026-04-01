@@ -26,11 +26,21 @@ def evaluate_regression(file_path, dims):
 
     #MSE
     mse = mean_squared_error(Y,y_pred)
+
+    # Retrieve parameters
+    intercept = linreg.intercept_
+    coefficients = linreg.coef_
+
+    # Build fit equation
+    equation = f"y = {intercept:.4f}"
+    for i, coef in enumerate(coefficients):
+        equation += f" + ({coef:.4f})b{i+1}"
    
     print(f"Results for {file_path}")
     print(f"RSE: {rse:.4f}")
     print(f"R2: {r2:.4f}")
-    print(f"MSE: {mse:.4f}\n")
+    print(f"MSE: {mse:.4f}")
+    print(f"Equation: {equation}\n")
 
 #Execution
 datasets = [
