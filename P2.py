@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score,mean_squared_error
+from sklearn.model_selection import train_test_split
 
 def evaluate_regression(file_path, dims, file_name):
     #Load dataset, dropping NaNs to handle gaps
@@ -11,22 +12,32 @@ def evaluate_regression(file_path, dims, file_name):
     X = df.iloc[:,:dims]
     Y = df.iloc[:,dims]
 
+    #Split
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
     #Fit
     linreg = LinearRegression()
-    linreg.fit(X,Y)
-    y_pred = linreg.predict(X)
+    linreg.fit(X_train, Y_train)
+    y_train_pred = linreg.predict(X_train)
+    y_test_pred = linreg.predict(X_test)
 
     #Calculate R2
-    r2 = r2_score(Y,y_pred)
+    train_r2 = r2_score(Y_train, y_train_pred)
+    test_r2 = r2_score(Y_test, y_test_pred)
 
     #Calculate Residual Standard Error(RSE)
-    n = len(Y)                      #number of samples 
-    p = X.shape[1]                  #number of predictors
-    rss = np.sum((Y - y_pred)**2)   #Residual Sum of Squares
-    rse = np.sqrt(rss / (n - p - 1))
+    n_train = len(Y_train)                             #number of samples 
+    p = X_train.shape[1]                              #number of predictors
+    train_rss = np.sum((Y_train - y_train_pred)**2)   #Residual Sum of Squares
+    train_rse = np.sqrt(train_rss / (n_train - p - 1))
+
+    n_test = len(Y_test)
+    test_rss = np.sum((Y_test - y_test_pred)**2)
+    test_rse = np.sqrt(test_rss / (n_test - p - 1))
 
     #MSE
-    mse = mean_squared_error(Y,y_pred)
+    train_mse = mean_squared_error(Y_train, y_train_pred)
+    test_mse = mean_squared_error(Y_test, y_test_pred)
 
     # Retrieve parameters
     intercept = linreg.intercept_
@@ -37,18 +48,39 @@ def evaluate_regression(file_path, dims, file_name):
     for i, coef in enumerate(coefficients):
         equation += f" + ({coef:.4f})b{i+1}"
    
+
     print(f"Results for {file_name}")
-    print(f"RSE: {rse:.4f}")
-    print(f"R2: {r2:.4f}")
-    print(f"MSE: {mse:.4f}")
+    print(f"Train RSE: {train_rse:.4f}")
+    print(f"Test RSE: {test_rse:.4f}")
+    print(f"Train R2: {train_r2:.4f}")
+    print(f"Test R2: {test_r2:.4f}")
+    print(f"Train MSE: {train_mse:.4f}")
+    print(f"Test MSE: {test_mse:.4f}")
     print(f"Equation: {equation}\n")
 
+
+    # Save data so it can be written to a cvs later
+    results.append({
+        "dataset": file_name,
+        "train_RSE": train_rse,
+        "test_RSE": test_rse,
+        "train_R2": train_r2,
+        "test_R2": test_r2,
+        "train_MSE": train_mse,
+        "test_MES": test_mse,
+        "equation": equation
+    })
 
 
     if dims == 1:
 
-        plt.scatter(X, Y)
-        plt.plot(X, y_pred, color='black')
+        plt.scatter(X_train, Y_train)
+
+        # Create a line so the predicted fit will look smooth
+        x_line = np.linspace(X.min(), X.max(), 20).reshape(-1, 1)
+        y_line = linreg.predict(x_line)
+
+        plt.plot(x_line, y_line, color='black')
 
         plt.xlabel("x")
         plt.ylabel("y")
@@ -60,13 +92,13 @@ def evaluate_regression(file_path, dims, file_name):
 
     if dims == 2:
 
-        x1 = X.iloc[:, 0]
-        x2 = X.iloc[:, 1]
+        x1 = X_train.iloc[:, 0]
+        x2 = X_train.iloc[:, 1]
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
-        ax.scatter(x1, x2, Y)
+        ax.scatter(x1, x2, Y_train)
 
         # Create a grid to get the plane to be smooth
         x1_range = np.linspace(x1.min(), x1.max(), 20)
@@ -95,9 +127,9 @@ def evaluate_regression(file_path, dims, file_name):
         # For 3D regression, hold x3 constant at several values
         # and make a 3D plot for each of those
 
-        x1 = X.iloc[:, 0]
-        x2 = X.iloc[:, 1]
-        x3 = X.iloc[:, 2]
+        x1 = X_train.iloc[:, 0]
+        x2 = X_train.iloc[:, 1]
+        x3 = X_train.iloc[:, 2]
 
         # Get slice values for x3
         x3_slices = np.linspace(x3.min(), x3.max(), 3)
@@ -107,7 +139,7 @@ def evaluate_regression(file_path, dims, file_name):
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
 
-            ax.scatter(x1, x2, Y, alpha=0.6)
+            ax.scatter(x1, x2, Y_train, alpha=0.6)
 
             # Create a grid of points to make the predicted fit plane smooth
             x1_range = np.linspace(x1.min(), x1.max(), 20)
@@ -132,7 +164,7 @@ def evaluate_regression(file_path, dims, file_name):
 
     # Predicted vs Actual values
     # This shows how accurate the model is
-    plt.scatter(Y, y_pred)
+    plt.scatter(Y_test, y_test_pred)
     plt.plot([Y.min(), Y.max()], [Y.min(), Y.max()], color="black")
 
     plt.xlabel("Actual Y")
@@ -144,8 +176,8 @@ def evaluate_regression(file_path, dims, file_name):
 
 
     # Residual Plot
-    plt.scatter(y_pred, Y - y_pred)
-    plt.hlines(0, xmin=y_pred.min(), xmax=y_pred.max(), color="black")
+    plt.scatter(y_test_pred, Y_test - y_test_pred)
+    plt.hlines(0, xmin=y_test_pred.min(), xmax=y_test_pred.max(), color="black")
     
     plt.xlabel("Predicted Y")
     plt.ylabel("Residuals")
@@ -154,6 +186,8 @@ def evaluate_regression(file_path, dims, file_name):
     plt.savefig(f"{file_name}/{file_name}_Residual.png")
     plt.clf()
 
+
+
 #Execution
 datasets = [
     ("1D L.csv", 1, "1DL"), ("1D M.csv", 1, "1DM"), ("1D H.csv", 1, "1DH"),
@@ -161,5 +195,10 @@ datasets = [
     ("3D L.csv", 3, "3DL"), ("3D M.csv", 3, "3DM"), ("3D H.csv", 3, "3DH"),
 ]
 
+results = []
+
 for file, dims, name in datasets:
     evaluate_regression(file, dims, name)
+
+results_df = pd.DataFrame(results)
+results_df.to_csv("Project2_data.csv", index=False)
