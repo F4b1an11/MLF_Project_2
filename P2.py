@@ -61,15 +61,30 @@ def evaluate_regression(file_path, dims, file_name):
 
     # Save data so it can be written to a cvs later
     results.append({
-        "dataset": file_name,
-        "train_RSE": train_rse,
-        "test_RSE": test_rse,
-        "train_R2": train_r2,
-        "test_R2": test_r2,
-        "train_MSE": train_mse,
-        "test_MES": test_mse,
-        "equation": equation
+        
     })
+
+    for i in range(len(Y_test)):
+        row = {
+            "dataset": file_name,
+            "actual": Y_test.iloc[i],
+            "predicted": y_test_pred[i],
+            "residual": Y_test.iloc[i] - y_test_pred[i],
+
+            # These will be duped for each line
+            "train_RSE": train_rse,
+            "test_RSE": test_rse,
+            "train_R2": train_r2,
+            "test_R2": test_r2,
+            "train_MSE": train_mse,
+            "test_MES": test_mse,
+            "equation": equation
+        }
+
+        for j in range(X_test.shape[1]):
+            row[f"x{j+1}"] = X_test.iloc[i, j]
+
+        results.append(row)
 
 
     if dims == 1:
